@@ -992,7 +992,7 @@ async function modificaPagina(path,sha){
   document.getElementById('pag-titolo').value=titleMatch?titleMatch[1].trim():'';
   document.getElementById('pag-description').value=descMatch?descMatch[1].trim():'';
   setPagCorpo(corpo);
-  setPagEditor('visuale');
+  setPagEditor('markdown');
   document.getElementById('nome-pagina').textContent=path.split('/').pop();
   document.getElementById('pag-permalink-field').style.display='none';
   document.getElementById('pag-lista-view').style.display='none';
