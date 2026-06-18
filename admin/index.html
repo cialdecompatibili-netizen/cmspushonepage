@@ -222,6 +222,7 @@ textarea.sm{min-height:180px;font-family:'Courier New',monospace;font-size:13px;
           <input type="text" id="pag-permalink" placeholder="/nome-pagina/">
         </div>
         <div class="field"><label>Titolo</label><input type="text" id="pag-titolo"></div>
+        <div class="field"><label>Descrizione SEO <span style="font-weight:400;color:#bbb">(opzionale — appare nei risultati Google)</span></label><input type="text" id="pag-description" placeholder="Breve descrizione della pagina..."></div>
         <div class="field">
           <label>Contenuto</label>
           <div class="editor-toggle">
@@ -982,12 +983,14 @@ async function modificaPagina(path,sha){
   const fm=content.match(/^---\n([\s\S]*?)\n---/);
   const corpo=content.replace(/^---[\s\S]*?---\n\n?/,'');
   const titleMatch=(fm?fm[1]:'').match(/title:\s*"?([^"\n]+)"?/);
+  const descMatch=(fm?fm[1]:'').match(/description:\s*"?([^"\n]+)"?/);
   _paginaPath=d.path||path;_paginaSha=d.sha;
   // Salva frontmatter originale completo (es. author_profile:false, permalink custom).
   // ⚠️ fm[0] e' il match di /^---[\s\S]*?---/ — NON include il \n\n dopo il ---.
   // Il \n\n viene aggiunto in salvaPagina con trimEnd()+'\n\n'+corpo.
   window._paginaFrontmatter=fm?fm[0]+'\n':'';
   document.getElementById('pag-titolo').value=titleMatch?titleMatch[1].trim():'';
+  document.getElementById('pag-description').value=descMatch?descMatch[1].trim():'';
   setPagCorpo(corpo);
   setPagEditor('visuale');
   document.getElementById('nome-pagina').textContent=path.split('/').pop();
@@ -1001,15 +1004,23 @@ async function salvaPagina(){
   try{
     if(!tok())return showMsg('msg-pag','⚠️ Token mancante.','err');
     const titolo=(document.getElementById('pag-titolo').value||'Pagina').trim();
+    const desc=(document.getElementById('pag-description').value||'').trim();
     const corpo=getPagCorpo().trim()||' ';
     let content;
     if(_paginaPath==='_includes/home-content.html'){
       content=corpo;
     } else if(_paginaPath){
-      // Preserva il frontmatter originale, aggiorna solo il titolo
+      // Preserva il frontmatter originale, aggiorna titolo e description
       let fm=window._paginaFrontmatter||'';
       if(fm){
         fm=fm.replace(/title:\s*"[^"]*"/,'title: "'+titolo+'"');
+        // Aggiorna o aggiungi description
+        if(desc){
+          if(/description:/.test(fm)) fm=fm.replace(/description:\s*"?[^"\n]+"?/,'description: "'+desc+'"');
+          else fm=fm.replace(/^---\n/,'---\ndescription: "'+desc+'"\n');
+        } else {
+          fm=fm.replace(/description:\s*"?[^"\n]+"?\n?/g,'');
+        }
         // ⚠️ CRITICO: Jekyll richiede esattamente \n\n tra fine frontmatter (---) e corpo.
         // fm.trimEnd() rimuove spazi/newline extra dalla fine del frontmatter estratto.
         // Se si usa \n invece di \n\n Jekyll non riconosce il frontmatter e lo mostra come testo.
@@ -1017,13 +1028,13 @@ async function salvaPagina(){
         content=fm.trimEnd()+'\n\n'+corpo;
       } else {
         const slug=_paginaPath.split('/').pop().replace('.md','');
-        content='---\nlayout: single\ntitle: "'+titolo+'"\npermalink: /'+slug+'/\nauthor_profile: true\n---\n\n'+corpo;
+        content='---\nlayout: single\ntitle: "'+titolo+'"'+(desc?'\ndescription: "'+desc+'"':'')+'\npermalink: /'+slug+'/\nauthor_profile: true\n---\n\n'+corpo;
       }
     } else {
       const slug=titolo.toLowerCase().replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
       const permalink=document.getElementById('pag-permalink').value.trim()||'/'+(slug||'nuova-pagina')+'/';
       _paginaPath='_pages/'+(slug||'nuova-pagina')+'.md';
-      content='---\nlayout: single\ntitle: "'+titolo+'"\npermalink: '+permalink+'\nauthor_profile: true\n---\n\n'+corpo;
+      content='---\nlayout: single\ntitle: "'+titolo+'"'+(desc?'\ndescription: "'+desc+'"':'')+'\npermalink: '+permalink+'\nauthor_profile: true\n---\n\n'+corpo;
     }
     let dots=0;
     const timer=setInterval(()=>{dots=(dots+1)%4;showMsg('msg-pag','⏳ Invio a GitHub'+'.'.repeat(dots),'ok');},400);
